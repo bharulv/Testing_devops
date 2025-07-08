@@ -1,25 +1,30 @@
-name: PHP Lint
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+name: PHP Syntax Check
+on: [push, pull_request]
 
 jobs:
-  phplint:
-    name: Run PHP Linter
+  php-lint:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
+    - uses: actions/checkout@v4
+    
     - name: Set up PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: 8.1
-
-    - name: Run PHP Linter
+        php-version: '8.2'
+        tools: phpcs, phpcbf
+    
+    - name: Lint PHP files
       run: |
-        find . -name "*.php" -print0 | xargs -0 -n 1 php -l
+        find . -name '*.php' -not -path './vendor/*' -exec php -l {} \;
+      continue-on-error: false
+    - name: Notify on failure
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: "⚠️ PHP syntax check failed! Please check the workflow run."
+          })
